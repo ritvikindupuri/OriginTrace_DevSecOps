@@ -1,6 +1,6 @@
-# OriginTrace — Autonomous DevSecOps Intelligence Engine Linking eBPF Kernel Syscalls Directly to Source Code AST Origins
+# OriginTrace — Runtime-to-Source DevSecOps Engine
 
-> **Bridging the Shift-Left and Shift-Right Divide**: Autonomous runtime-to-source threat correlation, dual-verdict exploit reachability analysis, dynamic Semgrep rule synthesis, and enterprise SIEM observability on the Elastic Stack.
+> Autonomous threat correlation linking eBPF kernel syscalls directly to source code origins.
 
 ---
 

@@ -1,4 +1,4 @@
-# OriginTrace: Technical Architecture, Autonomous Code Remediation & Dual-Verdict Exploit Reachability Specification
+# OriginTrace: Runtime-to-Source DevSecOps Engine Specification
 
 **Author**: Ritvik Indupuri  
 **Date**: September 16, 2026  
