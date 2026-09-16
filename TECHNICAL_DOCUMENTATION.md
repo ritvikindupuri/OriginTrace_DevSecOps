@@ -261,7 +261,153 @@ The remediation generator constructs safe code replacements and produces a stand
 * **Kibana Objects**: Pre-configured Data View (`origintrace-data-view`), Pie/Donut reachability breakdown, priority histograms, and saved search forensic audit streams.
 
 ### 4.7. Model Context Protocol (MCP) Tool Integration
-The MCP server operates over standard I/O and HTTP, providing programmatic access to tools formatted per JSON-RPC 2.0 specifications.
+
+OriginTrace implements a complete, compliant **Model Context Protocol (MCP)** server (`mcp_server/server.py`) conforming to the JSON-RPC 2.0 specification over standard input/output (`stdio`) and asynchronous transports. This allows AI coding assistants (such as Claude Desktop, Cursor, and Antigravity) to act as autonomous DevSecOps agents capable of triaging runtime alerts and hardening codebases without human delay.
+
+#### 4.7.1. MCP Protocol Framing & Architecture
+The MCP server operates as a child process managed by the AI host client. Communication occurs via line-delimited JSON-RPC messages:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant AI as AI Host (Claude / Antigravity)
+    participant MCP as OriginTrace MCP Server (stdio)
+    participant Engine as OriginTrace Core Subsystems
+
+    AI->>MCP: tools/list (Request Registered Capabilities)
+    MCP-->>AI: List [query_runtime_incidents, correlate_incident_to_code, synthesize_semgrep_rule]
+    
+    Note over AI,MCP: Autonomous Triage Workflow
+    AI->>MCP: tools/call (query_runtime_incidents, {priority: "CRITICAL"})
+    MCP->>Engine: Fetch Unresolved Kernel Incidents
+    Engine-->>MCP: Return Incident Telemetry Payload
+    MCP-->>AI: Tool Response (Incident inc-1789534499991)
+
+    AI->>MCP: tools/call (correlate_incident_to_code, {cmdline: "sh -c ping..."})
+    MCP->>Engine: Run AST Tree Traversal
+    Engine-->>MCP: Pinpointed File: sample_workload/app.py:36
+    MCP-->>AI: Tool Response (AST Source Coordinates)
+
+    AI->>MCP: tools/call (synthesize_semgrep_rule, {sink_name: "os.system"})
+    MCP->>Engine: Synthesize Semgrep Taint YAML & Scan
+    Engine-->>MCP: Rule Written & Verified
+    MCP-->>AI: Tool Response (YAML Path & Remediation Diff)
+```
+
+#### 4.7.2. Registered Tool Schemas & Payloads
+
+##### 1. `query_runtime_incidents`
+* **Purpose**: Fetches real-time Falco runtime security events from the incident store.
+* **JSON-RPC Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "query_runtime_incidents",
+    "arguments": {
+      "priority": "CRITICAL",
+      "limit": 5
+    }
+  }
+}
+```
+* **JSON-RPC Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"incident_id\": \"inc-1789534499991\", \"priority\": \"CRITICAL\", \"rule\": \"Terminal Shell Spawned in Production Container\", \"cmdline\": \"sh -c ping -c 1 127.0.0.1; cat /etc/passwd\", \"pod\": \"data-gateway-659f8-x2k41\"}]"
+      }
+    ]
+  }
+}
+```
+
+##### 2. `correlate_incident_to_code`
+* **Purpose**: Performs AST traversal across local repository files to match process invocations to source code sinks.
+* **JSON-RPC Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "correlate_incident_to_code",
+    "arguments": {
+      "incident_id": "inc-1789534499991",
+      "command_line": "sh -c ping -c 1 127.0.0.1; cat /etc/passwd"
+    }
+  }
+}
+```
+* **JSON-RPC Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"file\": \"sample_workload/app.py\", \"function\": \"diagnostic_ping\", \"line\": 36, \"sink\": \"os.system\", \"reachability_verdict\": \"CONFIRMED_EXPLOITABLE\", \"score\": 85}"
+      }
+    ]
+  }
+}
+```
+
+##### 3. `synthesize_semgrep_rule`
+* **Purpose**: Autonomously synthesizes a custom Semgrep Taint YAML rule and saves it to `security/semgrep/synthesized/`.
+* **JSON-RPC Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "synthesize_semgrep_rule",
+    "arguments": {
+      "sink_name": "os.system",
+      "rule_id": "auto-origintrace-terminal-shell"
+    }
+  }
+}
+```
+* **JSON-RPC Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"status\": \"SUCCESS\", \"rule_path\": \"security/semgrep/synthesized/auto-origintrace-terminal-shell.yml\", \"scanned_findings\": 1, \"blocking\": true}"
+      }
+    ]
+  }
+}
+```
+
+#### 4.7.3. Client Configuration (e.g., Claude Desktop / Cursor)
+To connect an AI coding client to the OriginTrace MCP Server, add the following to `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "origintrace": {
+      "command": "python",
+      "args": ["-m", "mcp_server.server"],
+      "cwd": "C:/Users/ritvi/.gemini/antigravity/scratch/aegisloop-devsecops"
+    }
+  }
+}
+```
 
 ---
 
