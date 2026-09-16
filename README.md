@@ -32,56 +32,6 @@ Modern cloud-native organizations suffer from severe **alert fatigue** and **con
 
 <p align="center"><b>Figure 1: OriginTrace Architecture: From Runtime Signals to Code Fixes</b></p>
 
-```mermaid
-flowchart LR
-    subgraph Inputs["1. Runtime Event Input"]
-        Falco["Falco / Falcosidekick Webhook<br/>(Sends Runtime Alerts)"]
-    end
-
-    subgraph Receiver["2. FastAPI Receiver"]
-        API["POST /webhook/falco<br/>• Validates Event<br/>• Stores Incident JSON"]
-    end
-
-    subgraph Store["3. Incident Store"]
-        JSONStore[".origintrace_data/<br/>inc-timestamp.json<br/>(Persistent Local JSON)"]
-    end
-
-    subgraph Analysis["4. Correlation & Reachability"]
-        PythonAST["Python AST Engine<br/>• AST Correlation<br/>• Source Origin<br/>• Reachability Verdict"]
-    end
-
-    subgraph Synthesis["5. Semgrep Rule Synthesis"]
-        SemgrepEngine["Semgrep Engine<br/>• Generate YAML Rule<br/>• Synthesized Rules<br/>• Optional Local Scan"]
-    end
-
-    subgraph Remediation["6. Results & Remediation"]
-        RemediationOutput["Remediation Engine<br/>• Findings + Verdict<br/>• Staged Patch Diff<br/>• Local Review / Apply"]
-    end
-
-    subgraph Demo["7. Demo Verification Path"]
-        TestClient["Sample FastAPI App<br/>• TestClient Request<br/>• Builds Falco-shaped Event"]
-    end
-
-    subgraph DevTools["8. Developer Interfaces"]
-        CLI["CLI Workflow"]
-        MCP["MCP Server (3 tools / stdio)"]
-    end
-
-    subgraph Observability["9. Elastic Observability (Optional)"]
-        Logstash["Logstash :8080"] --> ES["Elasticsearch (origintrace-events-*)"] --> Kibana["Kibana Dashboard"]
-    end
-
-    Falco -- "Falco Event (HTTP)" --> API
-    TestClient -- "Demo Event" --> API
-    API -- "Store Incident" --> JSONStore
-    JSONStore -- "Analyze" --> PythonAST
-    DevTools -- "List / Correlate / Synthesize" --> JSONStore
-    PythonAST -- "Synthesize" --> SemgrepEngine
-    SemgrepEngine -- "Results" --> RemediationOutput
-```
-
-<p align="center"><b>Figure 2: OriginTrace Component Interaction Flow</b></p>
-
 ### Flow-by-Flow Architecture Explanation
 
 1. **Stage 1 — Runtime Event Input (Falco / Falcosidekick Webhook)**: Production containers and microservices are monitored at the Linux kernel level by Falco via eBPF probes. When anomalous behavior occurs (such as an interactive `/bin/sh` process spawned inside a workload), Falco emits a structured JSON alert via HTTP webhook.
