@@ -4,7 +4,7 @@
 
 ---
 
-## 📖 Description
+## Description
 
 Modern cloud-native organizations suffer from severe **alert fatigue** and **context fragmentation**. Static Application Security Testing (SAST) tools generate thousands of theoretical warnings during pull requests without knowing if the code is ever executed in production. Conversely, runtime eBPF engines (like Falco) detect live kernel syscall attacks (`execve`, `openat`, `connect`) inside containers but provide zero visibility into the exact repository file, function, or line of code responsible for the vulnerability.
 
@@ -12,7 +12,7 @@ Modern cloud-native organizations suffer from severe **alert fatigue** and **con
 
 ---
 
-## ⚡ Key Features
+## Key Features
 
 * **Real Compiler AST Syscall Correlation**: Walks Python AST trees on disk to map kernel-level `execve`, `openat`, and socket syscalls directly to vulnerable code sinks (e.g., `os.system`, `subprocess.Popen`, `open`) with file path and line number precision.
 * **Dual-Verdict Exploit Reachability (0–100%)**: Dynamically separates live, verified exploitable vulnerabilities (`CONFIRMED_EXPLOITABLE` — P0) from dormant, dead-code static alerts (`STATIC_ONLY` — P3).
@@ -24,7 +24,7 @@ Modern cloud-native organizations suffer from severe **alert fatigue** and **con
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TD
@@ -75,7 +75,7 @@ graph TD
 
 ---
 
-## 📊 Live Kibana SIEM Dashboard
+## Live Kibana SIEM Dashboard
 
 <p align="center">
   <img src="./assets/kibana_dashboard.png" alt="OriginTrace Live Kibana SIEM Dashboard" width="950" />
@@ -126,7 +126,7 @@ The OriginTrace SIEM dashboard provides complete visibility into runtime threats
 
 ---
 
-## 💻 Tech Stack
+## Tech Stack
 
 | Category | Technologies |
 | :--- | :--- |
@@ -139,7 +139,7 @@ The OriginTrace SIEM dashboard provides complete visibility into runtime threats
 
 ---
 
-## 🚀 Setup Instructions
+## Setup Instructions
 
 ### Prerequisites
 * **Python 3.10+**
@@ -177,7 +177,7 @@ python kibana/refresh_live_data.py
 
 ---
 
-## 🕹️ How to Use the App (Step-by-Step)
+## How to Use the App (Step-by-Step)
 
 ### 1. Run the Full End-to-End Attack-to-Patch Pipeline
 Execute the live pipeline runner:
@@ -221,6 +221,6 @@ Exposed tools:
 
 ---
 
-## 📚 Technical Documentation
+## Technical Documentation
 
 For the complete in-depth architectural breakdown, compiler AST visitor implementations, mathematical reachability formulations, and MCP schemas, read the **[Comprehensive Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md)**.
