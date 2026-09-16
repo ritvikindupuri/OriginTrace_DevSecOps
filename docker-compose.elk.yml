@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: origintrace-elasticsearch
+    environment:
+      - node.name=origintrace-node
+      - cluster.name=origintrace-secops
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false # Local dev/demo simplicity
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - secops-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    container_name: origintrace-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - secops-net
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.15.0
+    container_name: origintrace-logstash
+    volumes:
+      - ./kibana/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    ports:
+      - "5044:5044" # Logstash Beats input
+      - "8080:8080" # Webhook HTTP Ingest for Falcosidekick
+    depends_on:
+      - elasticsearch
+    networks:
+      - secops-net
+
+volumes:
+  es_data:
+
+networks:
+  secops-net:
+    driver: bridge

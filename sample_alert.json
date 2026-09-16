@@ -1,0 +1,15 @@
+{
+  "uuid": "test-alert-99",
+  "priority": "CRITICAL",
+  "rule": "Terminal Shell Spawned in Production Container",
+  "time": "2026-09-16T04:29:00Z",
+  "output": "Interactive shell spawned in container cmdline=ping -c 1 8.8.8.8; id",
+  "output_fields": {
+    "proc.name": "sh",
+    "proc.pname": "python",
+    "proc.cmdline": "ping -c 1 8.8.8.8; id",
+    "container.name": "data-gateway",
+    "k8s.pod.name": "data-gateway-659f8-x2k41"
+  },
+  "tags": ["container", "t1059.004"]
+}

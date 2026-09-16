@@ -1,0 +1,55 @@
+{
+  "index_patterns": ["origintrace-events-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "origintrace": {
+          "properties": {
+            "engine": { "type": "keyword" },
+            "reachability_score": { "type": "integer" },
+            "reachability_verdict": { "type": "keyword" },
+            "source_origin": {
+              "properties": {
+                "file": { "type": "keyword" },
+                "function": { "type": "keyword" },
+                "line": { "type": "integer" },
+                "sink": { "type": "keyword" }
+              }
+            }
+          }
+        },
+        "falco": {
+          "properties": {
+            "rule": { "type": "keyword" },
+            "priority": { "type": "keyword" },
+            "output": { "type": "text" }
+          }
+        },
+        "process": {
+          "properties": {
+            "name": { "type": "keyword" },
+            "cmdline": { "type": "text" },
+            "parent": { "type": "keyword" }
+          }
+        },
+        "container": {
+          "properties": {
+            "name": { "type": "keyword" },
+            "image": { "type": "keyword" }
+          }
+        },
+        "kubernetes": {
+          "properties": {
+            "pod_name": { "type": "keyword" },
+            "namespace": { "type": "keyword" }
+          }
+        }
+      }
+    }
+  }
+}
