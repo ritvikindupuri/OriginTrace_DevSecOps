@@ -45,51 +45,73 @@ All operations execute against real local compilers, live CLI scanners (`semgrep
 
 The OriginTrace system architecture comprises a multi-tiered pipeline linking containerized microservices, kernel-level eBPF probes, the OriginTrace correlation engine, static analysis toolchains, and the Elastic Stack SIEM.
 
+<p align="center">
+  <img src="../assets/architecture_diagram.png" alt="OriginTrace Architecture: From Runtime Signals to Code Fixes" width="950" />
+</p>
+
+<p align="center"><b>Figure 1: OriginTrace Distributed Architecture: From Runtime Signals to Code Fixes</b></p>
+
 ```mermaid
-flowchart TB
-    subgraph Cluster["Production Kubernetes Environment"]
-        ClientReq["Inbound HTTP Request"] --> AppSvc["FastAPI Microservice (sample_workload/app.py)"]
-        AppSvc -- "os.system(cmd)" --> Kernel["Linux Kernel Syscall Layer (execve, openat, connect)"]
-        Kernel -- "Kernel Probe" --> FalcoDaemon["Falco eBPF Monitoring Engine"]
+flowchart LR
+    subgraph Inputs["1. Runtime Event Input"]
+        Falco["Falco / Falcosidekick Webhook<br/>(Sends Runtime Alerts)"]
     end
 
-    subgraph CoreEngine["OriginTrace Core Intelligence Engine"]
-        FalcoDaemon -- "JSON Webhook" --> Receiver["Webhook Telemetry Ingestion Receiver"]
-        Receiver --> Correlator["Compiler AST Correlator (ast.NodeVisitor)"]
-        RepoFiles["Local Git Workspace Source Files"] --> Correlator
-        Correlator --> ReachEngine["Dual-Verdict Reachability Engine"]
-        ReachEngine --> Synthesizer["Dynamic Semgrep Rule Synthesizer"]
-        ReachEngine --> PatchEngine["Automated PR Remediation Generator"]
+    subgraph Receiver["2. FastAPI Receiver"]
+        API["POST /webhook/falco<br/>• Validates Event<br/>• Stores Incident JSON"]
     end
 
-    subgraph StaticValidation["Shift-Left CI/CD Verification"]
-        Synthesizer -- "Generated YAML Rule" --> SemgrepCLI["Semgrep CLI Engine (semgrep.exe v1.177.0)"]
-        SemgrepCLI -- "AST Scan" --> Finding["1 Code Finding (Blocking Gate)"]
-        PatchEngine -- "Unified Diff Patch" --> GitPR["Staged Git PR Hotfix"]
+    subgraph Store["3. Incident Store"]
+        JSONStore[".origintrace_data/<br/>inc-timestamp.json<br/>(Persistent Local JSON)"]
     end
 
-    subgraph SIEM["Elastic Stack SIEM Observability"]
-        Receiver -- "Raw Incident Doc" --> ESCluster["Elasticsearch 8.15.0 Cluster"]
-        ReachEngine -- "Enriched Forensic Doc" --> ESCluster
-        ESCluster --> KibanaUI["OriginTrace Kibana SIEM Dashboard"]
+    subgraph Analysis["4. Correlation & Reachability"]
+        PythonAST["Python AST Engine<br/>• AST Correlation<br/>• Source Origin<br/>• Reachability Verdict"]
     end
 
-    style Cluster fill:#f1f5f9,stroke:#64748b,stroke-width:2px;
-    style CoreEngine fill:#ecfdf5,stroke:#10b981,stroke-width:2px;
-    style StaticValidation fill:#fffbeb,stroke:#f59e0b,stroke-width:2px;
-    style SIEM fill:#f5f3ff,stroke:#8b5cf6,stroke-width:2px;
+    subgraph Synthesis["5. Semgrep Rule Synthesis"]
+        SemgrepEngine["Semgrep Engine<br/>• Generate YAML Rule<br/>• Synthesized Rules<br/>• Optional Local Scan"]
+    end
+
+    subgraph Remediation["6. Results & Remediation"]
+        RemediationOutput["Remediation Engine<br/>• Findings + Verdict<br/>• Staged Patch Diff<br/>• Local Review / Apply"]
+    end
+
+    subgraph Demo["7. Demo Verification Path"]
+        TestClient["Sample FastAPI App<br/>• TestClient Request<br/>• Builds Falco-shaped Event"]
+    end
+
+    subgraph DevTools["8. Developer Interfaces"]
+        CLI["CLI Workflow"]
+        MCP["MCP Server (3 tools / stdio)"]
+    end
+
+    subgraph Observability["9. Elastic Observability (Optional)"]
+        Logstash["Logstash :8080"] --> ES["Elasticsearch (origintrace-events-*)"] --> Kibana["Kibana Dashboard"]
+    end
+
+    Falco -- "Falco Event (HTTP)" --> API
+    TestClient -- "Demo Event" --> API
+    API -- "Store Incident" --> JSONStore
+    JSONStore -- "Analyze" --> PythonAST
+    DevTools -- "List / Correlate / Synthesize" --> JSONStore
+    PythonAST -- "Synthesize" --> SemgrepEngine
+    SemgrepEngine -- "Results" --> RemediationOutput
 ```
 
-<p align="center"><b>Figure 1: OriginTrace Distributed System Architecture</b></p>
+<p align="center"><b>Figure 2: OriginTrace End-to-End Component Flow</b></p>
 
 ### Subsystem Flow Description
 
-1. **Ingress & Syscall Emission**: An external request triggers an application handler containing an unsafe system execution sink. The Python runtime issues an `execve` syscall to the operating system kernel.
-2. **eBPF Detection**: Falco captures the kernel transition via ring buffers, filters against rules such as `Terminal Shell Spawned in Production Container`, and emits a structured alert.
-3. **AST Ingestion & Correlation**: The OriginTrace Webhook Receiver validates the payload and invokes the `Compiler AST Correlator`. The correlator inspects the AST of all source files in the workspace, identifying the function (`diagnostic_ping`), file (`sample_workload/app.py`), and line (`36`) where `os.system` is invoked.
-4. **Reachability Evaluation**: The `Dual-Verdict Reachability Engine` calculates an exploit score based on the convergence of static sink presence and runtime syscall evidence.
-5. **Rule Synthesis & Static Scan**: The `Synthesizer` generates a Semgrep YAML rule. The local Semgrep CLI runs immediately against the repository, confirming the exact line finding.
-6. **PR Remediation & SIEM Streaming**: The patch generator outputs a unified diff replacing the dangerous call with safe subprocess execution. Concurrently, enriched forensic JSON documents are indexed into Elasticsearch and displayed in Kibana.
+1. **Stage 1 — Runtime Event Input (Falco / Falcosidekick Webhook)**: Workloads are continuously monitored at the Linux kernel boundary by Falco eBPF probes. Suspicious kernel syscalls (`execve`, `openat`, `connect`) trigger structured JSON alert webhooks.
+2. **Stage 2 — FastAPI Receiver**: Asynchronous ingestion service (`origintrace_core/receiver.py`) validating alert schemas, verifying process PIDs, and extracting Kubernetes metadata.
+3. **Stage 3 — Incident Store**: Atomic persistence into `.origintrace_data/inc-<timestamp>.json` ensuring immediate availability for local correlation and offline triage.
+4. **Stage 4 — Correlation & Reachability (Python Engine)**: Static compiler AST traversal (`origintrace_core/correlator.py`) mapping runtime execution back to exact source file coordinates, calculating the Dual-Verdict Exploit Reachability Score ($R \in [0, 100]$).
+5. **Stage 5 — Semgrep Rule Synthesis**: Dynamic generation of Semgrep Taint YAML rules with embedded CWE-78 and OWASP metadata, stored in `security/semgrep/synthesized/`.
+6. **Stage 6 — Results & Remediation**: Automated generation of unified diff patches replacing dangerous sinks with parameterized execution, staged for manual developer review.
+7. **Stage 7 — Demo Verification Path**: In-process diagnostic client using FastAPI `TestClient` to validate the entire remediation lifecycle without requiring a live cloud cluster.
+8. **Stage 8 — Developer Interfaces**: Dual-interface access via Developer CLI (`cli/origintrace_cli.py`) and JSON-RPC 2.0 Model Context Protocol Server (`mcp_server/server.py`).
+9. **Stage 9 — Elastic Observability (Optional)**: Telemetry streaming into Logstash, Elasticsearch 8.15 (`origintrace-events-*`), and native Kibana SIEM dashboards.
 
 ---
 

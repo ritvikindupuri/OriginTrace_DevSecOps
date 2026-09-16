@@ -1,8 +1,8 @@
 rules:
 - id: auto-origintrace-terminal-shell-spawned-in-production-container
   message: 'OriginTrace Auto-Synthesized Rule: Detected unvalidated invocation of
-    ''os.system'' triggered in runtime Falco incident: ''Terminal Shell Spawned in
-    Production Container''.'
+    ''subprocess.run'' triggered in runtime Falco incident: ''Terminal Shell Spawned
+    in Production Container''.'
   severity: ERROR
   languages:
   - python
@@ -14,8 +14,8 @@ rules:
   - pattern: $PARAM
     pattern-inside: "def $FUNC(..., $PARAM, ...):\n  ...\n"
   pattern-sinks:
-  - pattern: os.system(...)
-  - pattern: os.system($SINK, ...)
+  - pattern: subprocess.run(...)
+  - pattern: subprocess.run($SINK, ...)
   metadata:
     cwe: 'CWE-78: OS Command Injection'
     owasp: A03:2021 - Injection
