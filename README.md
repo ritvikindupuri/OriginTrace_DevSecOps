@@ -210,14 +210,50 @@ python kibana/live_streamer.py
 Switch back to Kibana and observe the live count increment in real time when you hit **Refresh**.
 
 ### 4. Interact via the Model Context Protocol (MCP) Agent Server
-Start the OriginTrace MCP Server for AI coding agents:
+
+The OriginTrace MCP Server enables AI coding assistants (such as Claude Desktop, Cursor, and Antigravity) to act as autonomous DevSecOps agents capable of investigating production threats and fixing source code directly.
+
+#### Step 4.1: Configure Your AI Client
+Add the OriginTrace server configuration to your AI client configuration file (for Claude Desktop, edit `%APPDATA%\Claude\claude_desktop_config.json` on Windows or `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "origintrace": {
+      "command": "python",
+      "args": ["-m", "mcp_server.server"],
+      "cwd": "C:/Users/ritvi/.gemini/antigravity/scratch/aegisloop-devsecops"
+    }
+  }
+}
+```
+
+#### Step 4.2: Start or Test the Server Standalone
+You can also run the server directly via standard I/O:
 ```powershell
 python mcp_server/server.py
 ```
-Exposed tools:
-* `query_runtime_incidents`: Fetches recent Falco runtime security events.
-* `correlate_incident_to_code`: Traces incident metadata to source code AST line numbers.
-* `synthesize_semgrep_rule`: Generates custom YAML rules to harden repositories.
+
+#### Step 4.3: Exposed MCP Tools
+* `query_runtime_incidents`: Queries recent runtime Falco eBPF security alerts filtered by priority level.
+* `correlate_incident_to_code`: Traces incident metadata to source code AST file paths, functions, and line numbers.
+* `synthesize_semgrep_rule`: Synthesizes custom Semgrep YAML rules to prevent regression in CI/CD.
+
+#### Step 4.4: Example Prompts to Provide to Your AI Agent
+
+Once connected, you can chat with your AI assistant using natural language prompts:
+
+* **Prompt 1 (Threat Discovery)**:
+  > *"Are there any active CRITICAL or ERROR runtime security incidents reported by Falco in our production cluster? List their incident IDs and commands."*
+  * **What the AI does**: Calls `query_runtime_incidents(priority="CRITICAL")`, inspects the incident list, and summarizes the active threats.
+
+* **Prompt 2 (Root Cause & AST Correlation)**:
+  > *"Investigate incident `inc-1789534499991`. Correlate it to our source code and tell me which function and line number executed the dangerous sink."*
+  * **What the AI does**: Calls `correlate_incident_to_code(incident_id="inc-1789534499991")`, parses the Python AST on disk, and points to `sample_workload/app.py:Line 36` in `diagnostic_ping()`.
+
+* **Prompt 3 (Autonomous Hardening & Rule Synthesis)**:
+  > *"Synthesize a Semgrep rule to block this command injection pattern, run a scan against the repository, and generate a secure code patch using subprocess.run with regex validation."*
+  * **What the AI does**: Calls `synthesize_semgrep_rule(incident_id="inc-1789534499991")`, writes `auto-origintrace-terminal-shell-spawned-in-production-container.yml`, and produces the unified remediation diff.
 
 ---
 
